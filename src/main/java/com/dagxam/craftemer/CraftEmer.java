@@ -11,7 +11,10 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.Event.Result;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.EquipmentSlotGroup;
@@ -42,6 +45,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private static final Color EMERALD_COLOR = Color.fromRGB(0x35C96B);
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
+            "assets/craftemer/atlases/items.json",
             "assets/craftemer/items/emerald_sword.json",
             "assets/craftemer/items/emerald_pickaxe.json",
             "assets/craftemer/items/emerald_axe.json",
@@ -97,7 +101,77 @@ public final class CraftEmer extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        sendResourcePack(event.getPlayer());
+        Player player = event.getPlayer();
+        sendResourcePack(player);
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendResourcePack(player);
+            }
+        }, 20L);
+    }
+
+    @EventHandler
+    public void onArmorInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        if (event.getHand() == null) {
+            return;
+        }
+
+        ItemStack held = event.getItem();
+        if (!isEmeraldArmor(held)) {
+            return;
+        }
+
+        EquipmentSlot armorSlot = getArmorSlot(held);
+        if (armorSlot == null) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        ItemStack currentlyEquipped = player.getInventory().getItem(armorSlot);
+
+        // EquippableComponent normally handles this. This explicit fallback also makes
+        // custom emerald armor equip reliably even though its base Material is EMERALD.
+        if (currentlyEquipped == null || currentlyEquipped.getType().isAir()) {
+            player.getInventory().setItem(armorSlot, held.clone());
+            setHandItem(player, event.getHand(), new ItemStack(Material.AIR));
+        } else {
+            player.getInventory().setItem(armorSlot, held.clone());
+            setHandItem(player, event.getHand(), currentlyEquipped.clone());
+        }
+
+        event.setUseItemInHand(Result.DENY);
+        event.setUseInteractedBlock(Result.DENY);
+    }
+
+    private boolean isEmeraldArmor(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return false;
+        }
+        String id = meta.getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        return id != null && id.startsWith("emerald_") && getArmorSlot(item) != null;
+    }
+
+    private EquipmentSlot getArmorSlot(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) {
+            return null;
+        }
+        String id = item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        if ("emerald_helmet".equals(id)) return EquipmentSlot.HEAD;
+        if ("emerald_chestplate".equals(id)) return EquipmentSlot.CHEST;
+        if ("emerald_leggings".equals(id)) return EquipmentSlot.LEGS;
+        if ("emerald_boots".equals(id)) return EquipmentSlot.FEET;
+        return null;
+    }
+
+    private void setHandItem(Player player, EquipmentSlot hand, ItemStack item) {
+        player.getInventory().setItem(hand, item);
     }
 
     private void sendResourcePack(Player player) {
@@ -126,9 +200,9 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         if (host.isEmpty()) {
             host = getServer().getIp().trim();
         }
-        if (host.isEmpty()) {
+        if (host.isEmpty() || host.equals("0.0.0.0") || host.equals("::")) {
             host = "127.0.0.1";
-            getLogger().warning("server-ip is empty. Using 127.0.0.1 for automatic resource-pack URL. This works for players on the same computer only; remote players need resource-pack.host or resource-pack.url configured.");
+            getLogger().warning("server-ip is empty or wildcard. Using 127.0.0.1 for automatic resource-pack URL. Remote players need resource-pack.host or resource-pack.url configured to a publicly reachable hostname/IP.");
         }
 
         if (host.contains(":") && !host.startsWith("[")) {
@@ -194,7 +268,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         }
         exchange.getResponseHeaders().set("Content-Type", "application/zip");
         exchange.getResponseHeaders().set("Content-Length", String.valueOf(resourcePack.length));
-        exchange.getResponseHeaders().set("Cache-Control", "public, max-age=31536000, immutable");
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
         exchange.sendResponseHeaders(200, resourcePack.length);
         try {
             exchange.getResponseBody().write(resourcePack);
