@@ -1,0 +1,11 @@
+resource-pack:
+  enabled: true
+  # Public URL that Minecraft clients can reach.
+  # Example: http://YOUR_PUBLIC_IP:8123/craftemer.zip
+  url: ""
+  port: 8123
+  required: false
+
+repair:
+  # Durability restored by one emerald in an anvil.
+  amount-per-emerald: 250
