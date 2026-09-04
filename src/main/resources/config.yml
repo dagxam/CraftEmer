@@ -1,10 +1,11 @@
 resource-pack:
   enabled: true
-  # Public URL that Minecraft clients can reach.
+  # URL that Minecraft clients can reach. If left empty, CraftEmer will use server-ip when it is explicitly configured.
   # Example: http://YOUR_PUBLIC_IP:8123/craftemer.zip
   url: ""
   port: 8123
-  required: false
+  # Automatically require the pack from players once a reachable URL is available.
+  required: true
 
 repair:
   # Durability restored by one emerald in an anvil.
