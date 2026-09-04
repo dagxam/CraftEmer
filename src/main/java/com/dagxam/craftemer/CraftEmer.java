@@ -24,6 +24,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +60,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private byte[] resourcePack;
     private String resourcePackHash;
     private HttpServer resourcePackServer;
+    private String resourcePackUrl;
 
     @Override
     public void onEnable() {
@@ -68,6 +72,10 @@ public final class CraftEmer extends JavaPlugin implements Listener {
                 new EmeraldRepairListener(itemKey, getConfig().getInt("repair.amount-per-emerald", 250)), this);
         prepareResourcePack();
         startResourcePackServer();
+        resourcePackUrl = resolveResourcePackUrl();
+        if (resourcePackUrl != null) {
+            getLogger().info("Resource pack automatic URL: " + resourcePackUrl);
+        }
         getServer().getOnlinePlayers().forEach(this::sendResourcePack);
         getLogger().info("CraftEmer enabled: emerald equipment is between gold and diamond.");
     }
@@ -91,14 +99,42 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             return;
         }
 
-        String url = getConfig().getString("resource-pack.url", "").trim();
-        if (url.isEmpty()) {
-            getLogger().warning("Resource pack URL is empty; texture pack is embedded but will not be sent to players.");
+        String configuredUrl = getConfig().getString("resource-pack.url", "").trim();
+        String url = configuredUrl.isEmpty() || configuredUrl.equalsIgnoreCase("auto")
+                ? resourcePackUrl : configuredUrl;
+
+        if (url == null || url.isEmpty()) {
+            getLogger().warning("Could not determine a reachable resource-pack URL automatically. Set resource-pack.url manually.");
             return;
         }
 
-        boolean force = getConfig().getBoolean("resource-pack.required", false);
+        boolean force = getConfig().getBoolean("resource-pack.required", true);
         player.setResourcePack(url, resourcePackHash, force);
+    }
+
+    private String resolveResourcePackUrl() {
+        int port = getConfig().getInt("resource-pack.port", 8123);
+        String host = getConfig().getString("resource-pack.host", "").trim();
+
+        if (host.isEmpty()) {
+            host = getServer().getIp().trim();
+        }
+        if (host.isEmpty()) {
+            host = "127.0.0.1";
+            getLogger().warning("server-ip is empty. Using 127.0.0.1 for automatic resource-pack URL. This works for players on the same computer only; remote players need resource-pack.host or resource-pack.url configured.");
+        }
+
+        if (host.contains(":" ) && !host.startsWith("[")) {
+            host = "[" + host + "]";
+        }
+
+        try {
+            URI uri = new URI("http", null, host, port, "/craftemer.zip", null, null);
+            return uri.toString();
+        } catch (Exception ex) {
+            getLogger().warning("Invalid resource-pack host '" + host + "': " + ex.getMessage());
+            return null;
+        }
     }
 
     private void prepareResourcePack() {
