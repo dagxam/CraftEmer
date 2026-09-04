@@ -24,3 +24,14 @@ combat:
   hoe:
     damage: 0.0
     attack-speed: -2.5
+
+# Embedded resource pack. The ZIP is built from files inside the plugin JAR
+# and served by a tiny HTTP server started by CraftEmer.
+resource-pack:
+  enabled: true
+  # Port must be reachable by Minecraft clients from the Internet/LAN.
+  port: 8123
+  # Public URL that players will use to download the embedded pack.
+  # Example: http://YOUR_SERVER_IP:8123/craftemer.zip
+  url: ""
+  required: false
