@@ -33,7 +33,7 @@ import java.util.zip.ZipOutputStream;
 public final class CraftEmer extends JavaPlugin implements Listener {
     private static final int DURABILITY = 1000;
     private static final float MINING_SPEED = 9.0f;
-    private static final int ENCHANTABILITY = 16;
+    private static final int ENMERCHANTABILITY = 16;
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
             "assets/craftemer/items/emerald_sword.json",
@@ -93,6 +93,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
 
         String url = getConfig().getString("resource-pack.url", "").trim();
         if (url.isEmpty()) {
+            getLogger().warning("Resource pack URL is empty; texture pack is embedded but will not be sent to players.");
             return;
         }
 
@@ -215,7 +216,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
         meta.setItemModel(new NamespacedKey(this, id));
         meta.setMaxStackSize(1);
-        meta.setEnchantable(ENCHANTABILITY);
+        meta.setEnchantable(ENMERCHANTABILITY);
 
         AttributeModifier damageModifier = new AttributeModifier(
                 UUID.randomUUID(), "craftemer_damage", damage,
