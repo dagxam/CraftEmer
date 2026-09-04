@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Event.Result;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -60,6 +61,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             "assets/craftemer/models/item/emerald_axe.json",
             "assets/craftemer/models/item/emerald_shovel.json",
             "assets/craftemer/models/item/emerald_hoe.json",
+            "assets/craftemer/models/equipment/leather.json",
             "assets/craftemer/textures/item/emerald_sword.png",
             "assets/craftemer/textures/item/emerald_pickaxe.png",
             "assets/craftemer/textures/item/emerald_axe.png",
@@ -115,22 +117,17 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-
         ItemStack held = event.getItem();
         if (!isEmeraldArmor(held)) {
             return;
         }
-
         EquipmentSlot armorSlot = getArmorSlot(held);
-        if (armorSlot == null) {
+        if (armorSlot == null || event.getHand() == null) {
             return;
         }
 
         Player player = event.getPlayer();
         ItemStack currentlyEquipped = player.getInventory().getItem(armorSlot);
-
-        // The native equippable component handles custom equipment. This explicit
-        // fallback guarantees right-click equipping even though the base Material is EMERALD.
         if (currentlyEquipped == null || currentlyEquipped.getType().isAir()) {
             player.getInventory().setItem(armorSlot, held.clone());
             setHandItem(player, event.getHand(), new ItemStack(Material.AIR));
@@ -143,23 +140,64 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         event.setUseInteractedBlock(Result.DENY);
     }
 
+    @EventHandler
+    public void onPrepareCraft(PrepareItemCraftEvent event) {
+        ItemStack result = event.getInventory().getResult();
+        if (!isCraftEmerItem(result)) {
+            return;
+        }
+        ItemStack[] matrix = event.getInventory().getMatrix();
+        if (!hasExpectedIngredients(result, matrix)) {
+            event.getInventory().setResult(null);
+        }
+    }
+
+    private boolean hasExpectedIngredients(ItemStack result, ItemStack[] matrix) {
+        String id = getId(result);
+        if (id == null) {
+            return false;
+        }
+        boolean[] used = new boolean[matrix.length];
+        int emeralds = 0;
+        int sticks = 0;
+        for (int i = 0; i < matrix.length; i++) {
+            ItemStack stack = matrix[i];
+            if (stack == null || stack.getType().isAir()) {
+                continue;
+            }
+            if (stack.getType() == Material.EMERALD) {
+                emeralds += stack.getAmount();
+                used[i] = true;
+            } else if (stack.getType() == Material.STICK) {
+                sticks += stack.getAmount();
+                used[i] = true;
+            }
+        }
+        return switch (id) {
+            case "emerald_helmet", "emerald_chestplate", "emerald_leggings", "emerald_boots" -> emeralds >= 4;
+            case "emerald_sword", "emerald_pickaxe", "emerald_axe", "emerald_shovel", "emerald_hoe" -> emeralds >= 1 && sticks >= 1;
+            default -> false;
+        };
+    }
+
+    private boolean isCraftEmerItem(ItemStack item) {
+        return getId(item) != null;
+    }
+
     private boolean isEmeraldArmor(ItemStack item) {
-        if (item == null || item.getType().isAir()) {
-            return false;
+        String id = getId(item);
+        return id != null && getArmorSlot(item) != null;
+    }
+
+    private String getId(ItemStack item) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
+            return null;
         }
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            return false;
-        }
-        String id = meta.getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
-        return id != null && id.startsWith("emerald_") && getArmorSlot(item) != null;
+        return item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
     }
 
     private EquipmentSlot getArmorSlot(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
-            return null;
-        }
-        String id = item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        String id = getId(item);
         if ("emerald_helmet".equals(id)) return EquipmentSlot.HEAD;
         if ("emerald_chestplate".equals(id)) return EquipmentSlot.CHEST;
         if ("emerald_leggings".equals(id)) return EquipmentSlot.LEGS;
@@ -176,16 +214,13 @@ public final class CraftEmer extends JavaPlugin implements Listener {
                 || resourcePack == null || resourcePackHash == null) {
             return;
         }
-
         String configuredUrl = getConfig().getString("resource-pack.url", "").trim();
         String url = configuredUrl.isEmpty() || configuredUrl.equalsIgnoreCase("auto")
                 ? resourcePackUrl : configuredUrl;
-
         if (url == null || url.isEmpty()) {
             getLogger().warning("Could not determine a reachable resource-pack URL automatically. Set resource-pack.url manually.");
             return;
         }
-
         boolean force = getConfig().getBoolean("resource-pack.required", true);
         player.setResourcePack(url, resourcePackHash, force);
     }
@@ -193,7 +228,6 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private String resolveResourcePackUrl() {
         int port = getConfig().getInt("resource-pack.port", 8123);
         String host = getConfig().getString("resource-pack.host", "").trim();
-
         if (host.isEmpty()) {
             host = getServer().getIp().trim();
         }
@@ -201,11 +235,9 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             host = "127.0.0.1";
             getLogger().warning("server-ip is empty or wildcard. Using 127.0.0.1 for automatic resource-pack URL. Remote players need resource-pack.host or resource-pack.url configured to a publicly reachable hostname/IP.");
         }
-
         if (host.contains(":") && !host.startsWith("[")) {
             host = "[" + host + "]";
         }
-
         try {
             URI uri = new URI("http", null, host, port, "/craftemer.zip", null, null);
             return uri.toString();
@@ -231,8 +263,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             zip.finish();
             resourcePack = output.toByteArray();
             resourcePackHash = sha1(resourcePack);
-            getLogger().info("Embedded resource pack prepared: " + resourcePack.length
-                    + " bytes, SHA-1 " + resourcePackHash);
+            getLogger().info("Embedded resource pack prepared: " + resourcePack.length + " bytes, SHA-1 " + resourcePackHash);
         } catch (Exception ex) {
             resourcePack = null;
             resourcePackHash = null;
@@ -244,7 +275,6 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         if (!getConfig().getBoolean("resource-pack.enabled", true) || resourcePack == null) {
             return;
         }
-
         int port = getConfig().getInt("resource-pack.port", 8123);
         try {
             resourcePackServer = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
@@ -284,46 +314,31 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     }
 
     private void registerItems() {
-        registerTool("emerald_pickaxe", "Изумрудная кирка", 5.0, -2.8,
-                Tag.MINEABLE_PICKAXE, new String[]{"EEE", " S ", " S "});
-        registerTool("emerald_axe", "Изумрудный топор", 7.0, -3.0,
-                Tag.MINEABLE_AXE, new String[]{"EE ", "ES ", " S "});
-        registerTool("emerald_shovel", "Изумрудная лопата", 3.0, -3.0,
-                Tag.MINEABLE_SHOVEL, new String[]{" E ", " S ", " S "});
-        registerTool("emerald_hoe", "Изумрудная мотыга", 2.0, -2.5,
-                Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
-        registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4,
-                new String[]{" E ", " E ", " S "});
-
-        registerArmor("emerald_helmet", "Изумрудный шлем", EquipmentSlot.HEAD,
-                3.0, 1.0, new String[]{"EEE", "E E"}, "leather_helmet");
-        registerArmor("emerald_chestplate", "Изумрудный нагрудник", EquipmentSlot.CHEST,
-                7.0, 1.0, new String[]{"E E", "EEE", "EEE"}, "leather_chestplate");
-        registerArmor("emerald_leggings", "Изумрудные поножи", EquipmentSlot.LEGS,
-                5.0, 1.0, new String[]{"EEE", "E E", "E E"}, "leather_leggings");
-        registerArmor("emerald_boots", "Изумрудные ботинки", EquipmentSlot.FEET,
-                2.0, 1.0, new String[]{"E E", "E E"}, "leather_boots");
+        registerTool("emerald_pickaxe", "Изумрудная кирка", 5.0, -2.8, Tag.MINEABLE_PICKAXE, new String[]{"EEE", " S ", " S "});
+        registerTool("emerald_axe", "Изумрудный топор", 7.0, -3.0, Tag.MINEABLE_AXE, new String[]{"EE ", "ES ", " S "});
+        registerTool("emerald_shovel", "Изумрудная лопата", 3.0, -3.0, Tag.MINEABLE_SHOVEL, new String[]{" E ", " S ", " S "});
+        registerTool("emerald_hoe", "Изумрудная мотыга", 2.0, -2.5, Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
+        registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4, new String[]{" E ", " E ", " S "});
+        registerArmor("emerald_helmet", "Изумрудный шлем", EquipmentSlot.HEAD, 3.0, 1.0, new String[]{"EEE", "E E"}, "leather_helmet");
+        registerArmor("emerald_chestplate", "Изумрудный нагрудник", EquipmentSlot.CHEST, 7.0, 1.0, new String[]{"E E", "EEE", "EEE"}, "leather_chestplate");
+        registerArmor("emerald_leggings", "Изумрудные поножи", EquipmentSlot.LEGS, 5.0, 1.0, new String[]{"EEE", "E E", "E E"}, "leather_leggings");
+        registerArmor("emerald_boots", "Изумрудные ботинки", EquipmentSlot.FEET, 2.0, 1.0, new String[]{"E E", "E E"}, "leather_boots");
     }
 
-    private void registerTool(String id, String name, double damage, double attackSpeed,
-                              Tag<Material> mineableTag, String[] shape) {
-        ItemStack item = createItem(id, name, damage, attackSpeed, mineableTag);
-        addRecipe(id, item, shape);
+    private void registerTool(String id, String name, double damage, double attackSpeed, Tag<Material> mineableTag, String[] shape) {
+        addRecipe(id, createItem(id, name, damage, attackSpeed, mineableTag), shape);
     }
 
-    private void registerWeapon(String id, String name, double damage, double attackSpeed,
-                                String[] shape) {
-        ItemStack item = createItem(id, name, damage, attackSpeed, null);
-        addRecipe(id, item, shape);
+    private void registerWeapon(String id, String name, double damage, double attackSpeed, String[] shape) {
+        addRecipe(id, createItem(id, name, damage, attackSpeed, null), shape);
     }
 
-    private void registerArmor(String id, String name, EquipmentSlot slot, double armor,
-                               double toughness, String[] shape, String vanillaItemModel) {
-        ItemStack item = createArmor(id, name, slot, armor, toughness, vanillaItemModel);
-        addRecipe(id, item, shape);
+    private void registerArmor(String id, String name, EquipmentSlot slot, double armor, double toughness, String[] shape, String vanillaItemModel) {
+        addRecipe(id, createArmor(id, name, slot, armor, toughness, vanillaItemModel), shape);
     }
 
     private void addRecipe(String id, ItemStack item, String[] shape) {
+        getServer().removeRecipe(new NamespacedKey(this, id));
         ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(this, id), item);
         recipe.shape(shape);
         recipe.setIngredient('E', Material.EMERALD);
@@ -331,32 +346,18 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         getServer().addRecipe(recipe);
     }
 
-    private ItemStack createItem(String id, String name, double damage, double attackSpeed,
-                                 Tag<Material> mineableTag) {
+    private ItemStack createItem(String id, String name, double damage, double attackSpeed, Tag<Material> mineableTag) {
         ItemStack item = new ItemStack(Material.EMERALD);
         item.setData(DataComponentTypes.MAX_DAMAGE, DURABILITY);
         ItemMeta meta = item.getItemMeta();
-
         meta.setDisplayName("§a" + name);
-        meta.setLore(List.of(
-                "§7Изумрудный материал",
-                "§8Сильнее золота • слабее алмаза"
-        ));
+        meta.setLore(List.of("§7Изумрудный материал", "§8Сильнее золота • слабее алмаза"));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
         meta.setItemModel(new NamespacedKey(this, id));
         meta.setMaxStackSize(1);
         meta.setEnchantable(ENMERCHANTABILITY);
-
-        AttributeModifier damageModifier = new AttributeModifier(
-                UUID.randomUUID(), "craftemer_damage", damage,
-                AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND);
-        meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, damageModifier);
-
-        AttributeModifier speedModifier = new AttributeModifier(
-                UUID.randomUUID(), "craftemer_attack_speed", attackSpeed,
-                AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND);
-        meta.addAttributeModifier(Attribute.ATTACK_SPEED, speedModifier);
-
+        meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(UUID.randomUUID(), "craftemer_damage", damage, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND));
+        meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(UUID.randomUUID(), "craftemer_attack_speed", attackSpeed, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND));
         if (mineableTag != null) {
             ToolComponent tool = meta.getTool();
             tool.setDefaultMiningSpeed(MINING_SPEED);
@@ -364,48 +365,31 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             tool.addRule(mineableTag, MINING_SPEED, true);
             meta.setTool(tool);
         }
-
         item.setItemMeta(meta);
         return item;
     }
 
-    private ItemStack createArmor(String id, String name, EquipmentSlot slot, double armor,
-                                  double toughness, String vanillaItemModel) {
+    private ItemStack createArmor(String id, String name, EquipmentSlot slot, double armor, double toughness, String vanillaItemModel) {
         ItemStack item = new ItemStack(Material.EMERALD);
         item.setData(DataComponentTypes.MAX_DAMAGE, ARMOR_DURABILITY);
-        item.setData(DataComponentTypes.DYED_COLOR,
-                io.papermc.paper.datacomponent.item.DyedItemColor.dyedItemColor(EMERALD_COLOR));
-
+        item.setData(DataComponentTypes.DYED_COLOR, io.papermc.paper.datacomponent.item.DyedItemColor.dyedItemColor(EMERALD_COLOR));
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName("§a" + name);
-        meta.setLore(List.of(
-                "§7Изумрудная броня",
-                "§8Сильнее золота • слабее алмаза"
-        ));
+        meta.setLore(List.of("§7Изумрудная броня", "§8Сильнее золота • слабее алмаза"));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
         meta.setItemModel(new NamespacedKey("minecraft", vanillaItemModel));
         meta.setMaxStackSize(1);
         meta.setEnchantable(ENMERCHANTABILITY);
-
         EquippableComponent equippable = meta.getEquippable();
         equippable.setSlot(slot);
-        equippable.setModel(new NamespacedKey("minecraft", "leather"));
+        equippable.setModel(new NamespacedKey("craftemer", "leather"));
         equippable.setDamageOnHurt(true);
         equippable.setDispensable(true);
         equippable.setSwappable(true);
-        equippable.setEquipOnInteract(true);
+        equippable.setEquipOnInteract(false);
         meta.setEquippable(equippable);
-
-        AttributeModifier armorModifier = new AttributeModifier(
-                UUID.randomUUID(), "craftemer_armor", armor,
-                AttributeModifier.Operation.ADD_NUMBER, slot.getGroup());
-        meta.addAttributeModifier(Attribute.ARMOR, armorModifier);
-
-        AttributeModifier toughnessModifier = new AttributeModifier(
-                UUID.randomUUID(), "craftemer_armor_toughness", toughness,
-                AttributeModifier.Operation.ADD_NUMBER, slot.getGroup());
-        meta.addAttributeModifier(Attribute.ARMOR_TOUGHNESS, toughnessModifier);
-
+        meta.addAttributeModifier(Attribute.ARMOR, new AttributeModifier(UUID.randomUUID(), "craftemer_armor", armor, AttributeModifier.Operation.ADD_NUMBER, slot.getGroup()));
+        meta.addAttributeModifier(Attribute.ARMOR_TOUGHNESS, new AttributeModifier(UUID.randomUUID(), "craftemer_armor_toughness", toughness, AttributeModifier.Operation.ADD_NUMBER, slot.getGroup()));
         item.setItemMeta(meta);
         return item;
     }
