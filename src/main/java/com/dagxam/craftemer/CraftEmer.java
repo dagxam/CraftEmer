@@ -3,6 +3,7 @@ package com.dagxam.craftemer;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
@@ -12,10 +13,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.EquippableComponent;
 import org.bukkit.inventory.meta.components.ToolComponent;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,8 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,8 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private static final int DURABILITY = 1000;
     private static final float MINING_SPEED = 9.0f;
     private static final int ENMERCHANTABILITY = 16;
+    private static final int ARMOR_DURABILITY = 400;
+    private static final Color EMERALD_COLOR = Color.fromRGB(0x35C96B);
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
             "assets/craftemer/items/emerald_sword.json",
@@ -44,6 +47,10 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             "assets/craftemer/items/emerald_axe.json",
             "assets/craftemer/items/emerald_shovel.json",
             "assets/craftemer/items/emerald_hoe.json",
+            "assets/craftemer/items/emerald_helmet.json",
+            "assets/craftemer/items/emerald_chestplate.json",
+            "assets/craftemer/items/emerald_leggings.json",
+            "assets/craftemer/items/emerald_boots.json",
             "assets/craftemer/models/item/emerald_sword.json",
             "assets/craftemer/models/item/emerald_pickaxe.json",
             "assets/craftemer/models/item/emerald_axe.json",
@@ -124,7 +131,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             getLogger().warning("server-ip is empty. Using 127.0.0.1 for automatic resource-pack URL. This works for players on the same computer only; remote players need resource-pack.host or resource-pack.url configured.");
         }
 
-        if (host.contains(":" ) && !host.startsWith("[")) {
+        if (host.contains(":") && !host.startsWith("[")) {
             host = "[" + host + "]";
         }
 
@@ -216,6 +223,15 @@ public final class CraftEmer extends JavaPlugin implements Listener {
                 Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
         registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4,
                 new String[]{" E ", " E ", " S "});
+
+        registerArmor("emerald_helmet", "Изумрудный шлем", EquipmentSlot.HEAD,
+                3.0, 1.0, new String[]{"EEE", "E E"}, "leather_helmet");
+        registerArmor("emerald_chestplate", "Изумрудный нагрудник", EquipmentSlot.CHEST,
+                7.0, 1.0, new String[]{"E E", "EEE", "EEE"}, "leather_chestplate");
+        registerArmor("emerald_leggings", "Изумрудные поножи", EquipmentSlot.LEGS,
+                5.0, 1.0, new String[]{"EEE", "E E", "E E"}, "leather_leggings");
+        registerArmor("emerald_boots", "Изумрудные ботинки", EquipmentSlot.FEET,
+                2.0, 1.0, new String[]{"E E", "E E"}, "leather_boots");
     }
 
     private void registerTool(String id, String name, double damage, double attackSpeed,
@@ -227,6 +243,12 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private void registerWeapon(String id, String name, double damage, double attackSpeed,
                                 String[] shape) {
         ItemStack item = createItem(id, name, damage, attackSpeed, null);
+        addRecipe(id, item, shape);
+    }
+
+    private void registerArmor(String id, String name, EquipmentSlot slot, double armor,
+                               double toughness, String[] shape, String vanillaItemModel) {
+        ItemStack item = createArmor(id, name, slot, armor, toughness, vanillaItemModel);
         addRecipe(id, item, shape);
     }
 
@@ -271,6 +293,47 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             tool.addRule(mineableTag, MINING_SPEED, true);
             meta.setTool(tool);
         }
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack createArmor(String id, String name, EquipmentSlot slot, double armor,
+                                  double toughness, String vanillaItemModel) {
+        ItemStack item = new ItemStack(Material.EMERALD);
+        item.setData(DataComponentTypes.MAX_DAMAGE, ARMOR_DURABILITY);
+        item.setData(DataComponentTypes.DYED_COLOR,
+                io.papermc.paper.datacomponent.item.DyedItemColor.dyedItemColor(EMERALD_COLOR));
+
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§a" + name);
+        meta.setLore(List.of(
+                "§7Изумрудная броня",
+                "§8Сильнее золота • слабее алмаза"
+        ));
+        meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
+        meta.setItemModel(new NamespacedKey("minecraft", vanillaItemModel));
+        meta.setMaxStackSize(1);
+        meta.setEnchantable(ENMERCHANTABILITY);
+
+        EquippableComponent equippable = meta.getEquippable();
+        equippable.setSlot(slot);
+        equippable.setModel(new NamespacedKey("minecraft", "leather"));
+        equippable.setDamageOnHurt(true);
+        equippable.setDispensable(true);
+        equippable.setSwappable(true);
+        equippable.setEquipOnInteract(true);
+        meta.setEquippable(equippable);
+
+        AttributeModifier armorModifier = new AttributeModifier(
+                UUID.randomUUID(), "craftemer_armor", armor,
+                AttributeModifier.Operation.ADD_NUMBER, slot.getGroup());
+        meta.addAttributeModifier(Attribute.ARMOR, armorModifier);
+
+        AttributeModifier toughnessModifier = new AttributeModifier(
+                UUID.randomUUID(), "craftemer_armor_toughness", toughness,
+                AttributeModifier.Operation.ADD_NUMBER, slot.getGroup());
+        meta.addAttributeModifier(Attribute.ARMOR_TOUGHNESS, toughnessModifier);
 
         item.setItemMeta(meta);
         return item;
