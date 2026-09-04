@@ -1,6 +1,6 @@
 name: CraftEmer
 version: 1.0.0
 main: com.dagxam.craftemer.CraftEmer
-api-version: '1.21'
+api-version: '26.2'
 author: dagxam
-description: Emerald tools and weapons between gold and diamond.
+description: Emerald tools, weapons and armor between gold and diamond.
