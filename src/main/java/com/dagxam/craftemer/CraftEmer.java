@@ -2,6 +2,7 @@ package com.dagxam.craftemer;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
@@ -32,7 +33,7 @@ import java.util.zip.ZipOutputStream;
 public final class CraftEmer extends JavaPlugin implements Listener {
     private static final int DURABILITY = 1000;
     private static final float MINING_SPEED = 9.0f;
-    private static final int ENCHANTABILITY = 16;
+    private static final int ENMERCHANTABILITY = 16;
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
             "assets/craftemer/items/emerald_sword.json",
@@ -63,6 +64,8 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         itemKey = new NamespacedKey(this, "emerald_item");
         registerItems();
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(
+                new EmeraldRepairListener(itemKey, getConfig().getInt("repair.amount-per-emerald", 250)), this);
         prepareResourcePack();
         startResourcePackServer();
         getServer().getOnlinePlayers().forEach(this::sendResourcePack);
@@ -84,8 +87,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
 
     private void sendResourcePack(Player player) {
         if (!getConfig().getBoolean("resource-pack.enabled", true)
-                || resourcePack == null
-                || resourcePackHash == null) {
+                || resourcePack == null || resourcePackHash == null) {
             return;
         }
 
@@ -114,7 +116,8 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             zip.finish();
             resourcePack = output.toByteArray();
             resourcePackHash = sha1(resourcePack);
-            getLogger().info("Embedded resource pack prepared: " + resourcePack.length + " bytes, SHA-1 " + resourcePackHash);
+            getLogger().info("Embedded resource pack prepared: " + resourcePack.length
+                    + " bytes, SHA-1 " + resourcePackHash);
         } catch (Exception ex) {
             resourcePack = null;
             resourcePackHash = null;
@@ -201,6 +204,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private ItemStack createItem(String id, String name, double damage, double attackSpeed,
                                  Tag<Material> mineableTag) {
         ItemStack item = new ItemStack(Material.EMERALD);
+        item.setData(DataComponentTypes.MAX_DAMAGE, DURABILITY);
         ItemMeta meta = item.getItemMeta();
 
         meta.setDisplayName("§a" + name);
@@ -211,8 +215,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
         meta.setItemModel(new NamespacedKey(this, id));
         meta.setMaxStackSize(1);
-        meta.setMaxDamage(DURABILITY);
-        meta.setEnchantable(ENCHANTABILITY);
+        meta.setEnchantable(ENMERCHANTABILITY);
 
         AttributeModifier damageModifier = new AttributeModifier(
                 UUID.randomUUID(), "craftemer_damage", damage,
