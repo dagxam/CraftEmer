@@ -1,5 +1,6 @@
 package com.dagxam.craftemer;
 
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.EventHandler;
@@ -7,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -16,7 +18,7 @@ public final class EmeraldRepairListener implements Listener {
 
     public EmeraldRepairListener(NamespacedKey itemKey, int repairAmount) {
         this.itemKey = itemKey;
-        this.repairAmount = repairAmount;
+        this.repairAmount = Math.max(1, repairAmount);
     }
 
     @EventHandler
@@ -30,23 +32,27 @@ public final class EmeraldRepairListener implements Listener {
         }
 
         ItemMeta meta = left.getItemMeta();
-        if (meta == null || !meta.hasMaxDamage()) {
+        if (!(meta instanceof Damageable damageable)) {
             return;
         }
 
-        int maxDamage = meta.getMaxDamage();
-        int currentDamage = meta.getDamage();
-        if (currentDamage <= 0) {
+        int maxDamage = left.getDataOrDefault(DataComponentTypes.MAX_DAMAGE, 0);
+        int currentDamage = damageable.getDamage();
+        if (maxDamage <= 0 || currentDamage <= 0) {
             event.setResult(null);
             return;
         }
 
-        int emeraldsUsed = Math.min(right.getAmount(), (int) Math.ceil((double) currentDamage / repairAmount));
+        int emeraldsUsed = Math.min(right.getAmount(),
+                (int) Math.ceil((double) currentDamage / repairAmount));
         int repairedDamage = Math.max(0, currentDamage - emeraldsUsed * repairAmount);
 
         ItemStack result = left.clone();
         ItemMeta resultMeta = result.getItemMeta();
-        resultMeta.setDamage(Math.min(repairedDamage, maxDamage));
+        if (!(resultMeta instanceof Damageable resultDamageable)) {
+            return;
+        }
+        resultDamageable.setDamage(Math.min(repairedDamage, maxDamage));
         result.setItemMeta(resultMeta);
 
         event.setResult(result);
@@ -57,7 +63,8 @@ public final class EmeraldRepairListener implements Listener {
         if (item == null || item.getType() != Material.EMERALD || !item.hasItemMeta()) {
             return false;
         }
-        String id = item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
+        String id = item.getItemMeta().getPersistentDataContainer()
+                .get(itemKey, PersistentDataType.STRING);
         return id != null && id.startsWith("emerald_");
     }
 }
