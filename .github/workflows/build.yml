@@ -30,6 +30,8 @@ jobs:
 
           required_files=(
             "pack.mcmeta"
+            "assets/minecraft/items/emerald.json"
+            "assets/minecraft/atlases/items.json"
             "assets/craftemer/items/emerald_sword.json"
             "assets/craftemer/items/emerald_pickaxe.json"
             "assets/craftemer/items/emerald_axe.json"
@@ -39,11 +41,13 @@ jobs:
             "assets/craftemer/items/emerald_chestplate.json"
             "assets/craftemer/items/emerald_leggings.json"
             "assets/craftemer/items/emerald_boots.json"
+            "assets/craftemer/models/item/emerald.json"
             "assets/craftemer/models/item/emerald_sword.json"
             "assets/craftemer/models/item/emerald_pickaxe.json"
             "assets/craftemer/models/item/emerald_axe.json"
             "assets/craftemer/models/item/emerald_shovel.json"
             "assets/craftemer/models/item/emerald_hoe.json"
+            "assets/craftemer/models/equipment/leather.json"
             "assets/craftemer/textures/item/emerald_sword.png"
             "assets/craftemer/textures/item/emerald_pickaxe.png"
             "assets/craftemer/textures/item/emerald_axe.png"
