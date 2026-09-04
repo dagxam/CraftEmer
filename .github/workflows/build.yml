@@ -11,11 +11,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
           cache: maven
 
       - name: Build with Maven
@@ -51,14 +51,15 @@ jobs:
             "assets/craftemer/textures/item/emerald_hoe.png"
           )
 
+          jar_contents="$(jar tf "$jar_file")"
           for file in "${required_files[@]}"; do
-            jar tf "$jar_file" | grep -Fxq "$file" || {
+            printf '%s\n' "$jar_contents" | grep -Fxq "$file" || {
               echo "Missing resource in JAR: $file"
               exit 1
             }
           done
 
-          echo "All CraftEmer tool textures, models, armor definitions and pack metadata are embedded in $jar_file"
+          echo "All CraftEmer resource-pack assets are embedded in $jar_file"
 
       - name: Upload plugin JAR
         uses: actions/upload-artifact@v4
