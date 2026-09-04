@@ -6,7 +6,6 @@ import org.bukkit.Tag;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.inventory.EquipmentSlotGroup;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -18,6 +17,10 @@ import java.util.List;
 import java.util.UUID;
 
 public final class CraftEmer extends JavaPlugin {
+    private static final int DURABILITY = 1000;
+    private static final float MINING_SPEED = 9.0f;
+    private static final int ENCHANTABILITY = 16;
+
     private NamespacedKey itemKey;
 
     @Override
@@ -28,27 +31,27 @@ public final class CraftEmer extends JavaPlugin {
     }
 
     private void registerItems() {
-        registerTool("emerald_pickaxe", "Изумрудная кирка", 1000, 9.0f, Tag.MINEABLE_PICKAXE,
-                5.0, -2.8, new String[]{"EEE", " S ", " S "});
-        registerTool("emerald_axe", "Изумрудный топор", 1000, 9.0f, Tag.MINEABLE_AXE,
-                7.0, -3.0, new String[]{"EE ", "ES ", " S "});
-        registerTool("emerald_shovel", "Изумрудная лопата", 1000, 9.0f, Tag.MINEABLE_SHOVEL,
-                3.0, -3.0, new String[]{" E ", " S ", " S "});
-        registerTool("emerald_hoe", "Изумрудная мотыга", 1000, 9.0f, Tag.MINEABLE_HOE,
-                0.0, -2.5, new String[]{"EE ", " S ", " S "});
-        registerWeapon("emerald_sword", "Изумрудный меч", 1000, 5.0, -2.4,
+        registerTool("emerald_pickaxe", "Изумрудная кирка", 5.0, -2.8,
+                Tag.MINEABLE_PICKAXE, new String[]{"EEE", " S ", " S "});
+        registerTool("emerald_axe", "Изумрудный топор", 7.0, -3.0,
+                Tag.MINEABLE_AXE, new String[]{"EE ", "ES ", " S "});
+        registerTool("emerald_shovel", "Изумрудная лопата", 3.0, -3.0,
+                Tag.MINEABLE_SHOVEL, new String[]{" E ", " S ", " S "});
+        registerTool("emerald_hoe", "Изумрудная мотыга", 0.0, -2.5,
+                Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
+        registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4,
                 new String[]{" E ", " E ", " S "});
     }
 
-    private void registerTool(String id, String name, int durability, float miningSpeed,
-                              Tag<Material> mineableTag, double damage, double attackSpeed, String[] shape) {
-        ItemStack item = createItem(id, name, durability, damage, attackSpeed, miningSpeed, mineableTag);
+    private void registerTool(String id, String name, double damage, double attackSpeed,
+                              Tag<Material> mineableTag, String[] shape) {
+        ItemStack item = createItem(id, name, damage, attackSpeed, mineableTag);
         addRecipe(id, item, shape);
     }
 
-    private void registerWeapon(String id, String name, int durability,
-                                double damage, double attackSpeed, String[] shape) {
-        ItemStack item = createItem(id, name, durability, damage, attackSpeed, null, null);
+    private void registerWeapon(String id, String name, double damage, double attackSpeed,
+                                String[] shape) {
+        ItemStack item = createItem(id, name, damage, attackSpeed, null);
         addRecipe(id, item, shape);
     }
 
@@ -60,8 +63,7 @@ public final class CraftEmer extends JavaPlugin {
         getServer().addRecipe(recipe);
     }
 
-    private ItemStack createItem(String id, String name, int durability,
-                                 double damage, double attackSpeed, Float miningSpeed,
+    private ItemStack createItem(String id, String name, double damage, double attackSpeed,
                                  Tag<Material> mineableTag) {
         ItemStack item = new ItemStack(Material.EMERALD);
         ItemMeta meta = item.getItemMeta();
@@ -72,8 +74,11 @@ public final class CraftEmer extends JavaPlugin {
                 "§8Сильнее золота • слабее алмаза"
         ));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
-        meta.setMaxDamage(durability);
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+
+        // Emerald equipment is a single, damageable item rather than a stack of emeralds.
+        meta.setMaxStackSize(1);
+        meta.setMaxDamage(DURABILITY);
+        meta.setEnchantable(ENCHANTABILITY);
 
         AttributeModifier damageModifier = new AttributeModifier(
                 UUID.randomUUID(), "craftemer_damage", damage,
@@ -85,11 +90,11 @@ public final class CraftEmer extends JavaPlugin {
                 AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND);
         meta.addAttributeModifier(Attribute.ATTACK_SPEED, speedModifier);
 
-        if (miningSpeed != null && mineableTag != null) {
+        if (mineableTag != null) {
             ToolComponent tool = meta.getTool();
-            tool.setDefaultMiningSpeed(miningSpeed);
+            tool.setDefaultMiningSpeed(MINING_SPEED);
             tool.setDamagePerBlock(1);
-            tool.addRule(mineableTag, miningSpeed, true);
+            tool.addRule(mineableTag, MINING_SPEED, true);
             meta.setTool(tool);
         }
 
