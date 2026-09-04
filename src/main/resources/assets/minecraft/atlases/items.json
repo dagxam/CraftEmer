@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "type": "minecraft:single",
+      "resource": "craftemer:item/emerald_sword"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "craftemer:item/emerald_pickaxe"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "craftemer:item/emerald_axe"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "craftemer:item/emerald_shovel"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "craftemer:item/emerald_hoe"
+    }
+  ]
+}
