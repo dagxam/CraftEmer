@@ -30,7 +30,6 @@ jobs:
 
           required_files=(
             "pack.mcmeta"
-            "assets/minecraft/items/emerald.json"
             "assets/minecraft/atlases/items.json"
             "assets/craftemer/items/emerald_sword.json"
             "assets/craftemer/items/emerald_pickaxe.json"
@@ -41,13 +40,12 @@ jobs:
             "assets/craftemer/items/emerald_chestplate.json"
             "assets/craftemer/items/emerald_leggings.json"
             "assets/craftemer/items/emerald_boots.json"
-            "assets/craftemer/models/item/emerald.json"
             "assets/craftemer/models/item/emerald_sword.json"
             "assets/craftemer/models/item/emerald_pickaxe.json"
             "assets/craftemer/models/item/emerald_axe.json"
             "assets/craftemer/models/item/emerald_shovel.json"
             "assets/craftemer/models/item/emerald_hoe.json"
-            "assets/craftemer/models/equipment/leather.json"
+            "assets/craftemer/equipment/leather.json"
             "assets/craftemer/textures/item/emerald_sword.png"
             "assets/craftemer/textures/item/emerald_pickaxe.png"
             "assets/craftemer/textures/item/emerald_axe.png"
@@ -63,7 +61,7 @@ jobs:
             }
           done
 
-          echo "All CraftEmer resource-pack assets are embedded in $jar_file"
+          echo "All CraftEmer 26.2 resource-pack assets are embedded in $jar_file"
 
       - name: Upload plugin JAR
         uses: actions/upload-artifact@v4
