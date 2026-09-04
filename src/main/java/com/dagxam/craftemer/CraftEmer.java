@@ -45,7 +45,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private static final Color EMERALD_COLOR = Color.fromRGB(0x35C96B);
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
-            "assets/craftemer/atlases/items.json",
+            "assets/minecraft/atlases/items.json",
             "assets/craftemer/items/emerald_sword.json",
             "assets/craftemer/items/emerald_pickaxe.json",
             "assets/craftemer/items/emerald_axe.json",
@@ -115,9 +115,6 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-        if (event.getHand() == null) {
-            return;
-        }
 
         ItemStack held = event.getItem();
         if (!isEmeraldArmor(held)) {
@@ -132,8 +129,8 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         ItemStack currentlyEquipped = player.getInventory().getItem(armorSlot);
 
-        // EquippableComponent normally handles this. This explicit fallback also makes
-        // custom emerald armor equip reliably even though its base Material is EMERALD.
+        // The native equippable component handles custom equipment. This explicit
+        // fallback guarantees right-click equipping even though the base Material is EMERALD.
         if (currentlyEquipped == null || currentlyEquipped.getType().isAir()) {
             player.getInventory().setItem(armorSlot, held.clone());
             setHandItem(player, event.getHand(), new ItemStack(Material.AIR));
