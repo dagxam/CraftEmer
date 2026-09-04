@@ -1,0 +1,26 @@
+# CraftEmer settings
+# Emerald equipment is intentionally between gold and diamond.
+
+durability: 1000
+mining-speed: 9.0
+enchantability: 16
+repair:
+  enabled: true
+  amount-per-emerald: 250
+
+combat:
+  sword:
+    damage: 5.0
+    attack-speed: -2.4
+  pickaxe:
+    damage: 5.0
+    attack-speed: -2.8
+  axe:
+    damage: 7.0
+    attack-speed: -3.0
+  shovel:
+    damage: 3.0
+    attack-speed: -3.0
+  hoe:
+    damage: 0.0
+    attack-speed: -2.5
