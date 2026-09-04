@@ -1,6 +1,7 @@
 {
   "pack": {
-    "pack_format": 88,
-    "description": "CraftEmer — Emerald Tools & Weapons"
+    "description": "CraftEmer — Emerald Tools & Weapons",
+    "min_format": [88, 0],
+    "max_format": [88, 0]
   }
 }
