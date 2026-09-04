@@ -44,6 +44,10 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     private static final int ENMERCHANTABILITY = 16;
     private static final int ARMOR_DURABILITY = 400;
     private static final Color EMERALD_COLOR = Color.fromRGB(0x35C96B);
+    private static final String[] RECIPE_IDS = {
+            "emerald_pickaxe", "emerald_axe", "emerald_shovel", "emerald_hoe", "emerald_sword",
+            "emerald_helmet", "emerald_chestplate", "emerald_leggings", "emerald_boots"
+    };
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
             "assets/minecraft/atlases/items.json",
@@ -61,7 +65,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             "assets/craftemer/models/item/emerald_axe.json",
             "assets/craftemer/models/item/emerald_shovel.json",
             "assets/craftemer/models/item/emerald_hoe.json",
-            "assets/craftemer/models/equipment/leather.json",
+            "assets/craftemer/equipment/leather.json",
             "assets/craftemer/textures/item/emerald_sword.png",
             "assets/craftemer/textures/item/emerald_pickaxe.png",
             "assets/craftemer/textures/item/emerald_axe.png",
@@ -104,6 +108,9 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        for (String id : RECIPE_IDS) {
+            player.discoverRecipe(new NamespacedKey(this, id));
+        }
         sendResourcePack(player);
         getServer().getScheduler().runTaskLater(this, () -> {
             if (player.isOnline()) {
@@ -157,20 +164,16 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         if (id == null) {
             return false;
         }
-        boolean[] used = new boolean[matrix.length];
         int emeralds = 0;
         int sticks = 0;
-        for (int i = 0; i < matrix.length; i++) {
-            ItemStack stack = matrix[i];
+        for (ItemStack stack : matrix) {
             if (stack == null || stack.getType().isAir()) {
                 continue;
             }
             if (stack.getType() == Material.EMERALD) {
                 emeralds += stack.getAmount();
-                used[i] = true;
             } else if (stack.getType() == Material.STICK) {
                 sticks += stack.getAmount();
-                used[i] = true;
             }
         }
         return switch (id) {
