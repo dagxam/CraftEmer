@@ -1,10 +1,11 @@
 resource-pack:
   enabled: true
-  # URL that Minecraft clients can reach. If left empty, CraftEmer will use server-ip when it is explicitly configured.
-  # Example: http://YOUR_PUBLIC_IP:8123/craftemer.zip
+  # Leave empty for automatic local URL detection.
+  # If the server is public, set host to the public IP or DNS name if server-ip is blank.
   url: ""
+  host: ""
   port: 8123
-  # Automatically require the pack from players once a reachable URL is available.
+  # Players automatically receive and must accept the resource pack.
   required: true
 
 repair:
