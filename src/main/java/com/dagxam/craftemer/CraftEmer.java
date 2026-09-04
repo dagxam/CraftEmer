@@ -33,7 +33,7 @@ import java.util.zip.ZipOutputStream;
 public final class CraftEmer extends JavaPlugin implements Listener {
     private static final int DURABILITY = 1000;
     private static final float MINING_SPEED = 9.0f;
-    private static final int ENMERCHANTABILITY = 16;
+    private static final int ENCHANTABILITY = 16;
     private static final String[] RESOURCE_FILES = {
             "pack.mcmeta",
             "assets/craftemer/items/emerald_sword.json",
@@ -175,7 +175,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
                 Tag.MINEABLE_AXE, new String[]{"EE ", "ES ", " S "});
         registerTool("emerald_shovel", "Изумрудная лопата", 3.0, -3.0,
                 Tag.MINEABLE_SHOVEL, new String[]{" E ", " S ", " S "});
-        registerTool("emerald_hoe", "Изумрудная мотыга", 0.0, -2.5,
+        registerTool("emerald_hoe", "Изумрудная мотыга", 2.0, -2.5,
                 Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
         registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4,
                 new String[]{" E ", " E ", " S "});
@@ -215,7 +215,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
         meta.setItemModel(new NamespacedKey(this, id));
         meta.setMaxStackSize(1);
-        meta.setEnchantable(ENMERCHANTABILITY);
+        meta.setEnchantable(ENCHANTABILITY);
 
         AttributeModifier damageModifier = new AttributeModifier(
                 UUID.randomUUID(), "craftemer_damage", damage,
