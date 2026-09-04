@@ -11,12 +11,12 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Event.Result;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.Event.Result;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
@@ -113,36 +113,22 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         }
         sendResourcePack(player);
         getServer().getScheduler().runTaskLater(this, () -> {
-            if (player.isOnline()) {
-                sendResourcePack(player);
-            }
+            if (player.isOnline()) sendResourcePack(player);
         }, 20L);
     }
 
     @EventHandler
     public void onArmorInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         ItemStack held = event.getItem();
-        if (!isEmeraldArmor(held)) {
-            return;
-        }
+        if (!isEmeraldArmor(held)) return;
         EquipmentSlot armorSlot = getArmorSlot(held);
-        if (armorSlot == null || event.getHand() == null) {
-            return;
-        }
-
+        if (armorSlot == null || event.getHand() == null) return;
         Player player = event.getPlayer();
         ItemStack currentlyEquipped = player.getInventory().getItem(armorSlot);
-        if (currentlyEquipped == null || currentlyEquipped.getType().isAir()) {
-            player.getInventory().setItem(armorSlot, held.clone());
-            setHandItem(player, event.getHand(), new ItemStack(Material.AIR));
-        } else {
-            player.getInventory().setItem(armorSlot, held.clone());
-            setHandItem(player, event.getHand(), currentlyEquipped.clone());
-        }
-
+        player.getInventory().setItem(armorSlot, held.clone());
+        setHandItem(player, event.getHand(), currentlyEquipped == null || currentlyEquipped.getType().isAir()
+                ? new ItemStack(Material.AIR) : currentlyEquipped.clone());
         event.setUseItemInHand(Result.DENY);
         event.setUseInteractedBlock(Result.DENY);
     }
@@ -150,31 +136,19 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     @EventHandler
     public void onPrepareCraft(PrepareItemCraftEvent event) {
         ItemStack result = event.getInventory().getResult();
-        if (!isCraftEmerItem(result)) {
-            return;
-        }
-        ItemStack[] matrix = event.getInventory().getMatrix();
-        if (!hasExpectedIngredients(result, matrix)) {
-            event.getInventory().setResult(null);
-        }
+        if (!isCraftEmerItem(result)) return;
+        if (!hasExpectedIngredients(result, event.getInventory().getMatrix())) event.getInventory().setResult(null);
     }
 
     private boolean hasExpectedIngredients(ItemStack result, ItemStack[] matrix) {
         String id = getId(result);
-        if (id == null) {
-            return false;
-        }
+        if (id == null) return false;
         int emeralds = 0;
         int sticks = 0;
         for (ItemStack stack : matrix) {
-            if (stack == null || stack.getType().isAir()) {
-                continue;
-            }
-            if (stack.getType() == Material.EMERALD) {
-                emeralds += stack.getAmount();
-            } else if (stack.getType() == Material.STICK) {
-                sticks += stack.getAmount();
-            }
+            if (stack == null || stack.getType().isAir()) continue;
+            if (stack.getType() == Material.EMERALD) emeralds += stack.getAmount();
+            else if (stack.getType() == Material.STICK) sticks += stack.getAmount();
         }
         return switch (id) {
             case "emerald_helmet", "emerald_chestplate", "emerald_leggings", "emerald_boots" -> emeralds >= 4;
@@ -183,19 +157,11 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         };
     }
 
-    private boolean isCraftEmerItem(ItemStack item) {
-        return getId(item) != null;
-    }
-
-    private boolean isEmeraldArmor(ItemStack item) {
-        String id = getId(item);
-        return id != null && getArmorSlot(item) != null;
-    }
+    private boolean isCraftEmerItem(ItemStack item) { return getId(item) != null; }
+    private boolean isEmeraldArmor(ItemStack item) { return getId(item) != null && getArmorSlot(item) != null; }
 
     private String getId(ItemStack item) {
-        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
-            return null;
-        }
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return null;
         return item.getItemMeta().getPersistentDataContainer().get(itemKey, PersistentDataType.STRING);
     }
 
@@ -208,56 +174,37 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         return null;
     }
 
-    private void setHandItem(Player player, EquipmentSlot hand, ItemStack item) {
-        player.getInventory().setItem(hand, item);
-    }
+    private void setHandItem(Player player, EquipmentSlot hand, ItemStack item) { player.getInventory().setItem(hand, item); }
 
     private void sendResourcePack(Player player) {
-        if (!getConfig().getBoolean("resource-pack.enabled", true)
-                || resourcePack == null || resourcePackHash == null) {
-            return;
-        }
+        if (!getConfig().getBoolean("resource-pack.enabled", true) || resourcePack == null || resourcePackHash == null) return;
         String configuredUrl = getConfig().getString("resource-pack.url", "").trim();
-        String url = configuredUrl.isEmpty() || configuredUrl.equalsIgnoreCase("auto")
-                ? resourcePackUrl : configuredUrl;
+        String url = configuredUrl.isEmpty() || configuredUrl.equalsIgnoreCase("auto") ? resourcePackUrl : configuredUrl;
         if (url == null || url.isEmpty()) {
             getLogger().warning("Could not determine a reachable resource-pack URL automatically. Set resource-pack.url manually.");
             return;
         }
-        boolean force = getConfig().getBoolean("resource-pack.required", true);
-        player.setResourcePack(url, resourcePackHash, force);
+        player.setResourcePack(url, resourcePackHash, getConfig().getBoolean("resource-pack.required", true));
     }
 
     private String resolveResourcePackUrl() {
         int port = getConfig().getInt("resource-pack.port", 8123);
         String host = getConfig().getString("resource-pack.host", "").trim();
-        if (host.isEmpty()) {
-            host = getServer().getIp().trim();
-        }
+        if (host.isEmpty()) host = getServer().getIp().trim();
         if (host.isEmpty() || host.equals("0.0.0.0") || host.equals("::")) {
             host = "127.0.0.1";
-            getLogger().warning("server-ip is empty or wildcard. Using 127.0.0.1 for automatic resource-pack URL. Remote players need resource-pack.host or resource-pack.url configured to a publicly reachable hostname/IP.");
+            getLogger().warning("server-ip is empty or wildcard. Remote players need resource-pack.host or resource-pack.url configured to a publicly reachable hostname/IP.");
         }
-        if (host.contains(":") && !host.startsWith("[")) {
-            host = "[" + host + "]";
-        }
-        try {
-            URI uri = new URI("http", null, host, port, "/craftemer.zip", null, null);
-            return uri.toString();
-        } catch (Exception ex) {
-            getLogger().warning("Invalid resource-pack host '" + host + "': " + ex.getMessage());
-            return null;
-        }
+        if (host.contains(":") && !host.startsWith("[")) host = "[" + host + "]";
+        try { return new URI("http", null, host, port, "/craftemer.zip", null, null).toString(); }
+        catch (Exception ex) { getLogger().warning("Invalid resource-pack host '" + host + "': " + ex.getMessage()); return null; }
     }
 
     private void prepareResourcePack() {
-        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
-             ZipOutputStream zip = new ZipOutputStream(output)) {
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream(); ZipOutputStream zip = new ZipOutputStream(output)) {
             for (String path : RESOURCE_FILES) {
                 try (InputStream input = getResource(path)) {
-                    if (input == null) {
-                        throw new IOException("Missing embedded resource: " + path);
-                    }
+                    if (input == null) throw new IOException("Missing embedded resource: " + path);
                     zip.putNextEntry(new ZipEntry(path));
                     input.transferTo(zip);
                     zip.closeEntry();
@@ -275,9 +222,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
     }
 
     private void startResourcePackServer() {
-        if (!getConfig().getBoolean("resource-pack.enabled", true) || resourcePack == null) {
-            return;
-        }
+        if (!getConfig().getBoolean("resource-pack.enabled", true) || resourcePack == null) return;
         int port = getConfig().getInt("resource-pack.port", 8123);
         try {
             resourcePackServer = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
@@ -285,34 +230,22 @@ public final class CraftEmer extends JavaPlugin implements Listener {
             resourcePackServer.setExecutor(null);
             resourcePackServer.start();
             getLogger().info("Embedded resource pack HTTP server started on port " + port + ".");
-        } catch (IOException ex) {
-            getLogger().severe("Could not start resource pack HTTP server on port " + port + ": " + ex.getMessage());
-        }
+        } catch (IOException ex) { getLogger().severe("Could not start resource pack HTTP server on port " + port + ": " + ex.getMessage()); }
     }
 
     private void handleResourcePackRequest(HttpExchange exchange) throws IOException {
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-            exchange.sendResponseHeaders(405, -1);
-            exchange.close();
-            return;
-        }
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) { exchange.sendResponseHeaders(405, -1); exchange.close(); return; }
         exchange.getResponseHeaders().set("Content-Type", "application/zip");
         exchange.getResponseHeaders().set("Content-Length", String.valueOf(resourcePack.length));
         exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
         exchange.sendResponseHeaders(200, resourcePack.length);
-        try {
-            exchange.getResponseBody().write(resourcePack);
-        } finally {
-            exchange.close();
-        }
+        try { exchange.getResponseBody().write(resourcePack); } finally { exchange.close(); }
     }
 
     private String sha1(byte[] data) throws Exception {
         byte[] digest = MessageDigest.getInstance("SHA-1").digest(data);
         StringBuilder result = new StringBuilder(40);
-        for (byte value : digest) {
-            result.append(String.format("%02x", value));
-        }
+        for (byte value : digest) result.append(String.format("%02x", value));
         return result.toString();
     }
 
@@ -322,31 +255,31 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         registerTool("emerald_shovel", "Изумрудная лопата", 3.0, -3.0, Tag.MINEABLE_SHOVEL, new String[]{" E ", " S ", " S "});
         registerTool("emerald_hoe", "Изумрудная мотыга", 2.0, -2.5, Tag.MINEABLE_HOE, new String[]{"EE ", " S ", " S "});
         registerWeapon("emerald_sword", "Изумрудный меч", 5.0, -2.4, new String[]{" E ", " E ", " S "});
-        registerArmor("emerald_helmet", "Изумрудный шлем", EquipmentSlot.HEAD, 3.0, 1.0, new String[]{"EEE", "E E"}, "leather_helmet");
-        registerArmor("emerald_chestplate", "Изумрудный нагрудник", EquipmentSlot.CHEST, 7.0, 1.0, new String[]{"E E", "EEE", "EEE"}, "leather_chestplate");
-        registerArmor("emerald_leggings", "Изумрудные поножи", EquipmentSlot.LEGS, 5.0, 1.0, new String[]{"EEE", "E E", "E E"}, "leather_leggings");
-        registerArmor("emerald_boots", "Изумрудные ботинки", EquipmentSlot.FEET, 2.0, 1.0, new String[]{"E E", "E E"}, "leather_boots");
+        registerArmor("emerald_helmet", "Изумрудный шлем", EquipmentSlot.HEAD, 3.0, 1.0, new String[]{"EEE", "E E"});
+        registerArmor("emerald_chestplate", "Изумрудный нагрудник", EquipmentSlot.CHEST, 7.0, 1.0, new String[]{"E E", "EEE", "EEE"});
+        registerArmor("emerald_leggings", "Изумрудные поножи", EquipmentSlot.LEGS, 5.0, 1.0, new String[]{"EEE", "E E", "E E"});
+        registerArmor("emerald_boots", "Изумрудные ботинки", EquipmentSlot.FEET, 2.0, 1.0, new String[]{"E E", "E E"});
     }
 
-    private void registerTool(String id, String name, double damage, double attackSpeed, Tag<Material> mineableTag, String[] shape) {
-        addRecipe(id, createItem(id, name, damage, attackSpeed, mineableTag), shape);
-    }
-
-    private void registerWeapon(String id, String name, double damage, double attackSpeed, String[] shape) {
-        addRecipe(id, createItem(id, name, damage, attackSpeed, null), shape);
-    }
-
-    private void registerArmor(String id, String name, EquipmentSlot slot, double armor, double toughness, String[] shape, String vanillaItemModel) {
-        addRecipe(id, createArmor(id, name, slot, armor, toughness, vanillaItemModel), shape);
-    }
+    private void registerTool(String id, String name, double damage, double attackSpeed, Tag<Material> mineableTag, String[] shape) { addRecipe(id, createItem(id, name, damage, attackSpeed, mineableTag), shape); }
+    private void registerWeapon(String id, String name, double damage, double attackSpeed, String[] shape) { addRecipe(id, createItem(id, name, damage, attackSpeed, null), shape); }
+    private void registerArmor(String id, String name, EquipmentSlot slot, double armor, double toughness, String[] shape) { addRecipe(id, createArmor(id, name, slot, armor, toughness), shape); }
 
     private void addRecipe(String id, ItemStack item, String[] shape) {
-        getServer().removeRecipe(new NamespacedKey(this, id));
-        ShapedRecipe recipe = new ShapedRecipe(new NamespacedKey(this, id), item);
+        NamespacedKey key = new NamespacedKey(this, id);
+        getServer().removeRecipe(key);
+        ShapedRecipe recipe = new ShapedRecipe(key, item);
         recipe.shape(shape);
         recipe.setIngredient('E', Material.EMERALD);
-        recipe.setIngredient('S', Material.STICK);
-        getServer().addRecipe(recipe);
+        if (containsIngredient(shape, 'S')) recipe.setIngredient('S', Material.STICK);
+        boolean added = getServer().addRecipe(recipe);
+        if (!added) getLogger().severe("Failed to register CraftEmer recipe: " + key);
+        else getLogger().info("Registered recipe: " + key);
+    }
+
+    private boolean containsIngredient(String[] shape, char ingredient) {
+        for (String row : shape) if (row.indexOf(ingredient) >= 0) return true;
+        return false;
     }
 
     private ItemStack createItem(String id, String name, double damage, double attackSpeed, Tag<Material> mineableTag) {
@@ -356,7 +289,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         meta.setDisplayName("§a" + name);
         meta.setLore(List.of("§7Изумрудный материал", "§8Сильнее золота • слабее алмаза"));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
-        meta.setItemModel(new NamespacedKey(this, id));
+        meta.setItemModel(new NamespacedKey("craftemer", id));
         meta.setMaxStackSize(1);
         meta.setEnchantable(ENMERCHANTABILITY);
         meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier(UUID.randomUUID(), "craftemer_damage", damage, AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.MAINHAND));
@@ -372,7 +305,7 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         return item;
     }
 
-    private ItemStack createArmor(String id, String name, EquipmentSlot slot, double armor, double toughness, String vanillaItemModel) {
+    private ItemStack createArmor(String id, String name, EquipmentSlot slot, double armor, double toughness) {
         ItemStack item = new ItemStack(Material.EMERALD);
         item.setData(DataComponentTypes.MAX_DAMAGE, ARMOR_DURABILITY);
         item.setData(DataComponentTypes.DYED_COLOR, io.papermc.paper.datacomponent.item.DyedItemColor.dyedItemColor(EMERALD_COLOR));
@@ -380,7 +313,8 @@ public final class CraftEmer extends JavaPlugin implements Listener {
         meta.setDisplayName("§a" + name);
         meta.setLore(List.of("§7Изумрудная броня", "§8Сильнее золота • слабее алмаза"));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, id);
-        meta.setItemModel(new NamespacedKey("minecraft", vanillaItemModel));
+        // The custom item definition in assets/craftemer/items/<id>.json is what gives the armor its green inventory icon.
+        meta.setItemModel(new NamespacedKey("craftemer", id));
         meta.setMaxStackSize(1);
         meta.setEnchantable(ENMERCHANTABILITY);
         EquippableComponent equippable = meta.getEquippable();
